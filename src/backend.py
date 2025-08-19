@@ -1,43 +1,108 @@
-#1. Import OS, Document Loader, Text Splitter, Bedrock Embeddings, Vector DB, VectorStoreIndex, Bedrock-LLM
 import os
-from langchain_community.document_loaders import PyPDFLoader
+import boto3
+from langchain_community.document_loaders import S3DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_aws import BedrockEmbeddings
+from langchain_aws import BedrockEmbeddings, BedrockLLM
 from langchain_community.vectorstores import Chroma
 from langchain.indexes import VectorstoreIndexCreator
-from langchain_aws import BedrockLLM
- 
-#5c. Wrap within a function
+import warnings
+import contextlib
+import sys
+import io
+    
+    # === Configuração AWS ===
+PROFILE_NAME = "AdministratorAccess-070410862903"
+BUCKET_NAME = "juridicosprojeto4"
+PREFIX = "juridicos/"
+
+def silent_load(loader):
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+        return loader.load()
+
+# === Criação do índice vetorial ===
 def hr_index():
-    #2. Define the data source and load data with PDFLoader(https://www.upl-ltd.com/images/people/downloads/Leave-Policy-India.pdf)
-    data_load=PyPDFLoader('https://www.upl-ltd.com/images/people/downloads/Leave-Policy-India.pdf')  
- 
-    #3. Split the Text based on Character, Tokens etc. - Recursively split by character - ["\n\n", "\n", " ", ""]
-    data_split=RecursiveCharacterTextSplitter(separators=["\n\n", "\n", " ", ""], chunk_size=100,chunk_overlap=10)
-    #4. Create Embeddings -- Client connection
-    data_embeddings=BedrockEmbeddings(
-    credentials_profile_name= 'AdministratorAccess-070410862903',
-    model_id='amazon.titan-embed-text-v1')
-    #5à Create Vector DB, Store Embeddings and Index for Search - VectorstoreIndexCreator
-    data_index=VectorstoreIndexCreator(
-        text_splitter=data_split,
-        embedding=data_embeddings,
-        vectorstore_cls=Chroma)
-    #5b  Create index for HR Policy Document
-    db_index=data_index.from_loaders([data_load])
-    return db_index
-#6a. Write a function to connect to Bedrock Foundation Model - Claude Foundation Model
+    try:
+        # Testa conexão S3
+        session = boto3.Session(profile_name=PROFILE_NAME)
+        s3 = session.client("s3")
+        s3.head_bucket(Bucket=BUCKET_NAME)
+        print("✅ Conexão com S3 validada")
+
+        # Carregar PDFs do bucket
+        loader = S3DirectoryLoader(bucket=BUCKET_NAME, prefix=PREFIX)
+        documents = silent_load(loader)
+        print(f"📄 Total de documentos carregados: {len(documents)}")
+
+        if not documents:
+            raise RuntimeError("Nenhum documento encontrado no S3.")
+
+        # Quebra documentos em pedaços
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=100
+        )
+
+        # Embeddings (Titan)
+        embeddings = BedrockEmbeddings(
+            credentials_profile_name=PROFILE_NAME,
+            model_id="amazon.titan-embed-text-v1"
+        )
+
+        # Cria índice vetorial com Chroma
+        index_creator = VectorstoreIndexCreator(
+            text_splitter=text_splitter,
+            embedding=embeddings,
+            vectorstore_cls=Chroma
+        )
+
+        print("🔎 Criando índice vetorial...")
+        return index_creator.from_documents(documents)
+
+    except Exception as e:
+        print(f"💥 Erro: {str(e)}")
+        raise
+
+# === Modelo de LLM ===
 def hr_llm():
-    llm=BedrockLLM(
-        credentials_profile_name='AdministratorAccess-070410862903',
-        model_id='amazon.titan-text-premier-v1:0',
+    return BedrockLLM(
+        credentials_profile_name=PROFILE_NAME,
+        model_id="amazon.titan-text-premier-v1:0",
         model_kwargs={
-        "temperature": 0.1,
-        })
-    return llm
-#6b. Write a function which searches the user prompt, searches the best match from Vector DB and sends both to LLM.
-def hr_rag_response(index,question):
-    rag_llm=hr_llm()
-    hr_rag_query=index.query(question=question,llm=rag_llm)
-    return hr_rag_query
-# Index creation --> https://api.python.langchain.com/en/latest/indexes/langchain.indexes.vectorstore.VectorstoreIndexCreator.html
+            "temperature": 0.3,
+            "maxTokenCount": 2048
+        }
+    )
+
+# === Função de RAG ===
+def hr_rag_response(index, question: str):
+    rag_llm = hr_llm()
+    return index.query(question=question, llm=rag_llm)
+
+                    # Testes
+# "Quem são as partes envolvidas no processo?"
+# Resposta esperada: Instituto de Hematologia e Hemoterapia de Sergipe (embargante) e Fundação de Saúde Parreiras Horta (embargado)
+
+# "Qual é o objeto da controvérsia?"
+# Resposta esperada: Cobrança por serviços de exames sorológicos realizados e discussão sobre validade de contrato verbal com a administração pública
+
+# "Qual foi o resultado dos embargos de declaração?"
+# Resposta esperada: Embargos conhecidos mas desprovidos (negado provimento)
+
+# "Qual fundamento legal foi utilizado para invalidar o contrato verbal?"
+# Resposta esperada: Artigo 60 da Lei Federal nº 8.666/93 (Lei de Licitações)
+
+# "Qual o valor da dívida discutida no processo?"
+# Resposta esperada: R$ 178.265,86
+
+# "Qual o tipo de ação processual discutida?"
+# Resposta esperada: Ação Monitória com Embargos Monitórios
+
+# "Qual o argumento principal do embargante para contestar o valor?"
+# Resposta esperada: Alegava excesso de cobrança e que o preço deveria ser baseado na tabela do IHENE (Instituto de Hematologia do Nordeste)
+
+# "Qual tribunal julgou o processo?"
+# Resposta esperada: Tribunal de Justiça do Estado de Sergipe
+
+# "Houve aplicação de multa por embargos protelatórios? E o Porque?"
+# Resposta esperada: Não, pois não foi caracterizado caráter protelatório
