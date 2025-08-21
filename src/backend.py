@@ -9,9 +9,9 @@ import warnings
 import contextlib
 import sys
 import io
-    
+
     # === Configuração AWS ===
-PROFILE_NAME = "AdministratorAccess-070410862903"
+PROFILE_NAME="default"
 BUCKET_NAME = "juridicosprojeto4"
 PREFIX = "juridicos/"
 
@@ -24,7 +24,9 @@ def silent_load(loader):
 def hr_index():
     try:
         # Testa conexão S3
-        session = boto3.Session(profile_name=PROFILE_NAME)
+        session = boto3.Session(
+            profile_name=PROFILE_NAME,
+        )
         s3 = session.client("s3")
         s3.head_bucket(Bucket=BUCKET_NAME)
         print("✅ Conexão com S3 validada")
