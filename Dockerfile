@@ -1,25 +1,32 @@
 # Usa uma imagem base oficial do Python
-FROM python:3.9-slim-buster
+FROM python:3.9-slim-bullseye
+
+# Atualiza e instala dependências do sistema
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# Copia o arquivo de requisitos e instala as dependências
+# Copia e instala as dependências Python
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia os arquivos da sua aplicação (backend.py e frontend.py)
-# Certifique-se de que o caminho 'src/' está correto em relação à raiz do seu contexto Docker
-COPY src/backend.py .
-COPY src/frontend.py .
+# Copia os arquivos da aplicação
+COPY src/ ./
 
-# Expõe a porta que o Streamlit usa por padrão
+# Expõe a porta do Streamlit
 EXPOSE 80
 
-# Define a variável de ambiente para que o Streamlit não abra o navegador
+# Variáveis de ambiente para Streamlit
 ENV STREAMLIT_SERVER_PORT=80 \
     STREAMLIT_SERVER_HEADLESS=true
 
-# Comando para iniciar a aplicação Streamlit
-# O backend.py será importado por frontend.py, então basta rodar o frontend
+# Comando para rodar a aplicação
 CMD ["streamlit", "run", "frontend.py"]

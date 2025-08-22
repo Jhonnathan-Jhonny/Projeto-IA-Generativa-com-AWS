@@ -4,3 +4,4 @@ langchain-community
 langchain-aws
 langchain
 chromadb
+unstructured[pdf]

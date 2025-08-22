@@ -11,7 +11,7 @@ import sys
 import io
 
     # === Configuração AWS ===
-PROFILE_NAME="default"
+# PROFILE_NAME="default"
 BUCKET_NAME = "juridicosprojeto4"
 PREFIX = "juridicos/"
 
@@ -25,7 +25,7 @@ def hr_index():
     try:
         # Testa conexão S3
         session = boto3.Session(
-            profile_name=PROFILE_NAME,
+            # profile_name=PROFILE_NAME,
         )
         s3 = session.client("s3")
         s3.head_bucket(Bucket=BUCKET_NAME)
@@ -47,7 +47,8 @@ def hr_index():
 
         # Embeddings (Titan)
         embeddings = BedrockEmbeddings(
-            credentials_profile_name=PROFILE_NAME,
+            # credentials_profile_name=PROFILE_NAME,
+            region_name="us-east-1",
             model_id="amazon.titan-embed-text-v1"
         )
 
@@ -68,8 +69,9 @@ def hr_index():
 # === Modelo de LLM ===
 def hr_llm():
     return BedrockLLM(
-        credentials_profile_name=PROFILE_NAME,
+        # credentials_profile_name=PROFILE_NAME,
         model_id="amazon.titan-text-premier-v1:0",
+        region_name="us-east-1",
         model_kwargs={
             "temperature": 0.3,
             "maxTokenCount": 2048
