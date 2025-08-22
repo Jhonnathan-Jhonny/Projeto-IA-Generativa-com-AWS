@@ -1,7 +1,6 @@
 streamlit
 boto3
-langchain
 langchain-community
 langchain-aws
+langchain
 chromadb
-python-dotenv
