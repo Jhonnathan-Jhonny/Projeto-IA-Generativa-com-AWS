@@ -7,7 +7,13 @@ RUN apt-get update && apt-get install -y \
     wget \
     curl \
     unzip \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Instala SQLite 3.42+ (necessário para ChromaDB)
 RUN wget https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz \

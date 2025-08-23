@@ -1,7 +1,8 @@
-streamlit
 boto3
 langchain-community
 langchain-aws
 langchain
 chromadb
 unstructured[pdf]
+fastapi
+uvicorn[standard]
