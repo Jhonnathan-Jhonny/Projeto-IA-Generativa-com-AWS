@@ -1,0 +1,27 @@
+   # Testes
+# "Quem são as partes envolvidas no processo?"
+# Resposta esperada: Instituto de Hematologia e Hemoterapia de Sergipe (embargante) e Fundação de Saúde Parreiras Horta (embargado)
+
+# "Qual é o objeto da controvérsia?"
+# Resposta esperada: Cobrança por serviços de exames sorológicos realizados e discussão sobre validade de contrato verbal com a administração pública
+
+# "Qual foi o resultado dos embargos de declaração?"
+# Resposta esperada: Embargos conhecidos mas desprovidos (negado provimento)
+
+# "Qual fundamento legal foi utilizado para invalidar o contrato verbal?"
+# Resposta esperada: Artigo 60 da Lei Federal nº 8.666/93 (Lei de Licitações)
+
+# "Qual o valor da dívida discutida no processo?"
+# Resposta esperada: R$ 178.265,86
+
+# "Qual o tipo de ação processual discutida?"
+# Resposta esperada: Ação Monitória com Embargos Monitórios
+
+# "Qual o argumento principal do embargante para contestar o valor?"
+# Resposta esperada: Alegava excesso de cobrança e que o preço deveria ser baseado na tabela do IHENE (Instituto de Hematologia do Nordeste)
+
+# "Qual tribunal julgou o processo?"
+# Resposta esperada: Tribunal de Justiça do Estado de Sergipe
+
+# "Houve aplicação de multa por embargos protelatórios? E o Porque?"
+# Resposta esperada: Não, pois não foi caracterizado caráter protelatório

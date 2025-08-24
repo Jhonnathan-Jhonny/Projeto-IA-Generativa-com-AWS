@@ -10,23 +10,54 @@ import contextlib
 import sys
 import io
 
-    # === Configuração AWS ===
-# PROFILE_NAME="default"
+# === Configuração ===
 BUCKET_NAME = "juridicosprojeto4"
 PREFIX = "juridicos/"
+CHROMA_PERSIST_DIR = "/tmp/chroma_db"  # Para Lambda, use /tmp
+
+# Variável global para cache do índice
+cached_index = None
 
 def silent_load(loader):
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
         return loader.load()
 
-# === Criação do índice vetorial ===
+# === Criação do índice vetorial (com cache) ===
 def hr_index():
+    global cached_index
+    
+    # Se já temos o índice em cache, retorna
+    if cached_index is not None:
+        print("✅ Retornando índice do cache")
+        return cached_index
+    
     try:
+        # Verifica se já existe ChromaDB persistido
+        if os.path.exists(CHROMA_PERSIST_DIR) and os.listdir(CHROMA_PERSIST_DIR):
+            print("📂 Carregando índice persistido do ChromaDB...")
+            embeddings = BedrockEmbeddings(
+                region_name="us-east-1",
+                model_id="amazon.titan-embed-text-v1"
+            )
+            
+            # Carrega o ChromaDB existente
+            vectorstore = Chroma(
+                persist_directory=CHROMA_PERSIST_DIR,
+                embedding_function=embeddings
+            )
+            
+            cached_index = VectorstoreIndexCreator(
+                vectorstore=vectorstore
+            ).from_vectorstore(vectorstore)
+            
+            return cached_index
+
+        # Se não existe, cria novo índice
+        print("🆕 Criando novo índice vetorial...")
+        
         # Testa conexão S3
-        session = boto3.Session(
-            # profile_name=PROFILE_NAME,
-        )
+        session = boto3.Session()
         s3 = session.client("s3")
         s3.head_bucket(Bucket=BUCKET_NAME)
         print("✅ Conexão com S3 validada")
@@ -47,20 +78,27 @@ def hr_index():
 
         # Embeddings (Titan)
         embeddings = BedrockEmbeddings(
-            # credentials_profile_name=PROFILE_NAME,
             region_name="us-east-1",
             model_id="amazon.titan-embed-text-v1"
         )
 
-        # Cria índice vetorial com Chroma
+        # Cria índice vetorial com Chroma e persiste
         index_creator = VectorstoreIndexCreator(
             text_splitter=text_splitter,
             embedding=embeddings,
-            vectorstore_cls=Chroma
+            vectorstore_cls=Chroma,
+            vectorstore_kwargs={
+                "persist_directory": CHROMA_PERSIST_DIR
+            }
         )
 
-        print("🔎 Criando índice vetorial...")
-        return index_creator.from_documents(documents)
+        print("🔎 Criando e persistindo índice vetorial...")
+        cached_index = index_creator.from_documents(documents)
+        
+        # Persiste o ChromaDB
+        cached_index.vectorstore.persist()
+        
+        return cached_index
 
     except Exception as e:
         print(f"💥 Erro: {str(e)}")
@@ -69,7 +107,6 @@ def hr_index():
 # === Modelo de LLM ===
 def hr_llm():
     return BedrockLLM(
-        # credentials_profile_name=PROFILE_NAME,
         model_id="amazon.titan-text-premier-v1:0",
         region_name="us-east-1",
         model_kwargs={
@@ -82,31 +119,3 @@ def hr_llm():
 def hr_rag_response(index, question: str):
     rag_llm = hr_llm()
     return index.query(question=question, llm=rag_llm)
-
-                    # Testes
-# "Quem são as partes envolvidas no processo?"
-# Resposta esperada: Instituto de Hematologia e Hemoterapia de Sergipe (embargante) e Fundação de Saúde Parreiras Horta (embargado)
-
-# "Qual é o objeto da controvérsia?"
-# Resposta esperada: Cobrança por serviços de exames sorológicos realizados e discussão sobre validade de contrato verbal com a administração pública
-
-# "Qual foi o resultado dos embargos de declaração?"
-# Resposta esperada: Embargos conhecidos mas desprovidos (negado provimento)
-
-# "Qual fundamento legal foi utilizado para invalidar o contrato verbal?"
-# Resposta esperada: Artigo 60 da Lei Federal nº 8.666/93 (Lei de Licitações)
-
-# "Qual o valor da dívida discutida no processo?"
-# Resposta esperada: R$ 178.265,86
-
-# "Qual o tipo de ação processual discutida?"
-# Resposta esperada: Ação Monitória com Embargos Monitórios
-
-# "Qual o argumento principal do embargante para contestar o valor?"
-# Resposta esperada: Alegava excesso de cobrança e que o preço deveria ser baseado na tabela do IHENE (Instituto de Hematologia do Nordeste)
-
-# "Qual tribunal julgou o processo?"
-# Resposta esperada: Tribunal de Justiça do Estado de Sergipe
-
-# "Houve aplicação de multa por embargos protelatórios? E o Porque?"
-# Resposta esperada: Não, pois não foi caracterizado caráter protelatório
