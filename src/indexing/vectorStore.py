@@ -5,10 +5,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_aws import BedrockEmbeddings, BedrockLLM
 from langchain_community.vectorstores import Chroma
 from langchain.indexes import VectorstoreIndexCreator
-import warnings
 import contextlib
-import sys
 import io
+
 
 BUCKET_NAME = "juridicosprojeto4"
 PREFIX = "juridicos/"
@@ -27,13 +26,11 @@ def hr_index():
     global cached_index
     
     if cached_index is not None:
-        print("✅ Retornando índice do cache")
         return cached_index
     
     try:
         # Verifica se já existe ChromaDB persistido
         if os.path.exists(CHROMA_PERSIST_DIR) and os.listdir(CHROMA_PERSIST_DIR):
-            print("📂 Carregando índice persistido do ChromaDB...")
             embeddings = BedrockEmbeddings(
                 region_name="us-east-1",
                 model_id="amazon.titan-embed-text-v1"
@@ -49,17 +46,13 @@ def hr_index():
             ).from_vectorstore(vectorstore)
             
             return cached_index
-
-        print("🆕 Criando novo índice vetorial...")
         
         session = boto3.Session()
         s3 = session.client("s3")
         s3.head_bucket(Bucket=BUCKET_NAME)
-        print("✅ Conexão com S3 validada")
 
         loader = S3DirectoryLoader(bucket=BUCKET_NAME, prefix=PREFIX)
         documents = silent_load(loader)
-        print(f"📄 Total de documentos carregados: {len(documents)}")
 
         if not documents:
             raise RuntimeError("Nenhum documento encontrado no S3.")
@@ -84,7 +77,6 @@ def hr_index():
             }
         )
 
-        print("🔎 Criando e persistindo índice vetorial...")
         cached_index = index_creator.from_documents(documents)
         
         cached_index.vectorstore.persist()
@@ -94,17 +86,3 @@ def hr_index():
     except Exception as e:
         print(f"💥 Erro: {str(e)}")
         raise
-
-def hr_llm():
-    return BedrockLLM(
-        model_id="amazon.titan-text-premier-v1:0",
-        region_name="us-east-1",
-        model_kwargs={
-            "temperature": 0.3,
-            "maxTokenCount": 2048
-        }
-    )
-
-def hr_rag_response(index, question: str):
-    rag_llm = hr_llm()
-    return index.query(question=question, llm=rag_llm)
