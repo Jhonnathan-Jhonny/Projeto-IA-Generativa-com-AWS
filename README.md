@@ -14,7 +14,7 @@ Fluxo principal:
 1. Usuários enviam mensagens ao chatbot pelo **Telegram**.  
 2. O **API Gateway** recebe a requisição.  
 3. O **Lambda** é acionado e redireciona a requisição para a aplicação rodando em uma **instância EC2**.  
-4. A aplicação na **EC2**, utilizando **LangChain**, realiza:  
+4. A aplicação na **EC2** rodando em docker, utilizando **LangChain**, realiza:  
    - Leitura de documentos jurídicos armazenados no **S3 (dataset jurídico)**;  
    - Criação de embeddings utilizando **Amazon Bedrock**;  
    - Indexação dos embeddings no **ChromaDB** para recuperação eficiente;  
