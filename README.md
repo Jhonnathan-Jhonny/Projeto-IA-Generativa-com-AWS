@@ -60,3 +60,28 @@ Fluxo principal:
  ┣ README.md
  ┣ testes.txt
  ┗ requirements.txt
+
+ ## Testes BDD (exemplos)
+
+```gherkin
+Feature: Geração de respostas com IA generativa via AWS Bedrock
+
+  Scenario: Usuário faz uma pergunta simples e recebe resposta
+    Given que o sistema está em execução
+    When o usuário envia a pergunta "Qual a capital da França?"
+    Then o sistema deve retornar uma resposta contendo "Paris"
+
+  Scenario: Usuário faz uma pergunta baseada em documentos indexados
+    Given que documentos foram carregados e indexados no vetor store
+    When o usuário pergunta "Qual o valor da dívida discutida no processo?"
+    Then a resposta deve usar informações recuperadas dos documentos
+
+  Scenario: Indexação de novo documento
+    Given que um novo documento "manual.pdf" foi carregado
+    When o sistema processar a indexação
+    Then o documento deve estar acessível para futuras consultas
+
+  Scenario: Consulta com contexto não encontrado
+    Given que nenhum documento contém informações sobre "foguetes espaciais"
+    When o usuário pergunta "Qual o combustível do foguete?"
+    Then o sistema deve retornar uma resposta genérica indicando não ter conhecimento sobre o assunto
